@@ -1,0 +1,138 @@
+---
+title: "Obesity Comorbidity Analysis"
+author: "Chloe Li"
+date: "11/22/2016"
+output: 
+  html_notebook:
+    toc: true
+    theme: united
+    highlight: kate
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+---
+
+# Introduction
+
+  This report documents data analytics process for obesity comorbidity analysis on data retrieved from NCBI. This is an assignment from Brown University's the CIS Data Science Practice for assessing Chloe Li's technical skills.
+
+  The objective of tis assignment is to conduct a comorbidity analysis for obesity using NCBI's PubMed database. The data was selected based on a date range of __2000 to 2012__, with a major MeSH descriptor of __"obesity"__ and semantic types of __"Disease or Syndrome"__.
+
+
+```{r prep, echo=TRUE, message=FALSE, warning=FALSE}
+#preparation
+
+#clear environment if needed
+rm(list = ls())
+
+#set working directory
+setwd('~/Documents/Dev_dataScienceProjects')
+
+
+#install/reuqire libraries
+if (!'pacman' %in% installed.packages()){
+  install.packages('pacman')
+}
+
+pacman::p_load("ggplot2","dplyr", "rentrez")
+#rentrez is the package in R provides an interface to the NCBI's EUtils API
+```
+
+
+# Data
+## PubMed Search
+- Database summary: **PubMed**
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+#show the database summary information
+entrez_db_summary("pubmed")
+```
+- List of **PubMed**'s *searchable fields*
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+#Searchable fields for database 'pubmed'
+entrez_db_searchable("pubmed")
+```
+
+- Formulation of PubMed/MEDLINE search for articles between 2000 and 2012 with obesity indicated as the major MeSH descriptor.
+    + *__MAJR__ - MeSH terms of major importance to publication* is used as searchable fields
+    + **2000/01/01:2012/12/31[PDAT]** is date of publication/[PDAT]
+    + **pubmed** is the database
+
+Below shows the search result, which contains 5,9515 records/IDs and a web_history object:
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+query <- "obesity[MAJR] AND 2000/01/01:2012/12/31[PDAT]"
+
+obesity_search <- entrez_search(db="pubmed",
+                        query,
+                        retmode = "xml",
+                        use_history = TRUE,
+                        retmax=60000)
+
+obesity_search
+```
+
+**The formulation of the PubMed search is shown below:**
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+obesity_search$QueryTranslation
+
+```
+
+
+In order to make sure this search result match with the number of records on NCBI. The same searching criterias were used on NCBI manually, and the result is shown below:
+
+
+![](/Users/ChloeLi/Documents/Dev_dataScienceProjects/BrownUniv/searchResultNCBI.png)
+
+
+## Data Retrival
+- Obtain PubMed/MEDLINE records (in MEDLINE or XML format) for the formulated search using NCBI E-Utilities
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+#obesity_sum <- entrez_summary(db="pubmed",id = "23170966")
+#fetch all records from the formulated search
+#because the records are big, we need to use web history to pull data out
+#output should be in parsed xml format
+fetch_xml <- entrez_fetch(db = "pubmed", 
+                     #id = obesity_search$ids, 
+                     web_history = obesity_search$web_history, 
+                     rettype = "xml", 
+                     #retmode = "xml",
+                     parsed = TRUE)
+
+nchar(fetch_xml)
+#https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmax=100000&term=obesity[mesh+major+topic]+AND+2000/1/1:2012/12/31[pdat]&rettype=xml
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+search_year <- function(year, term){
+    query <- paste(term, "AND (", year, "[PDAT])")
+    entrez_search(db="pubmed", term=query, retmax=0)$count
+}
+
+year <- 2000:2012
+papers <- sapply(year, search_year, term="obesity", USE.NAMES=FALSE)
+
+plot(year, papers, type='b', main="The Rise of the Obesity")
+```
+
+
+- Create mapping of MeSH descriptors to semantic types using the MeSH Vocabulary file (desc2015.xml) and identify descriptors with type ???Disease or Syndrome.???
+- "ftp:// nlmpubs.nlm.nih.gov/online/mesh/2015/desc2015.xml""
+
+
+- Using a statistical or modeling approach of your choice, identify and rank comorbidities for obesity based on publications that share MeSH descriptors for multiple diseases/syndromes.
+
+
+
+## Methods
+
+#Analysis
+
+## Exploratory Analysis
+## Advanced Analysis 
+
+
+# Results
+
+
+# Conclusions
