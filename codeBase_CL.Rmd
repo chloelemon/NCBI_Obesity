@@ -103,7 +103,7 @@ obesity_search$QueryTranslation
 In order to make sure this search result match with the number of records on NCBI. The same searching criteria were used on NCBI website manually, and the result is shown below:
 
 
-![](/Users/ChloeLi/Documents/Dev_dataScienceProjects/BrownUniv/searchResultNCBI.png)
+![](./searchResultNCBI.png)
 - Sample summary record
 ```{r}
 entrez_summary(db="pubmed",id=obesity_search$ids[1])
