@@ -39,7 +39,7 @@ if (!'pacman' %in% installed.packages()){
   install.packages('pacman')
 }
 
-pacman::p_load("ggplot2","dplyr", "rentrez","knitr","RCurl","plyr")
+pacman::p_load("ggplot2","dplyr", "rentrez","knitr","RCurl","plyr","tidyr","data.table")
 
 #rentrez is the package in R provides an interface to the NCBI's EUtils API
 ```
@@ -126,6 +126,9 @@ source('./batchFetch_Fun.R')
 #this returns a data frame with extracted information from all records
 dt_sum <- batchFetch(obesity_search)
 #function code will be shown at the end of this report
+
+#save dt_sum in local so don't need to run every time
+#write.csv(dt_sum, "obesity_SumTable.csv")
 ```
 - Sample of the data frame
 ```{r, echo=TRUE, message=FALSE, warning=FALSE}
@@ -134,33 +137,46 @@ kable(dt_sum[1:3,])
 
 
 To prepare the data for further analysis, two variables *authors* and *meshHeadings* should be re formatted since there are multiple values in one record for both variables. 
+*authors* and *meshHeadings* variables should be unlisted so that each row represents an unique record of meshHeadings and authors with pmid, publication year and article title.
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+source('./unlistDT_Fun.R')
+
+#return a data frame of 5 variables with each cell contains only single value
+dt_tidy <- unlistDT(dt_sum)
+```
+
+
+- Sample of the data frame
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+kable(dt_tidy[1:5,])
+```
 
 
 
 
-
-
-
-
-
-
-
+## Mapping
 - Create mapping of MeSH descriptors to semantic types using the MeSH Vocabulary file (desc2015.xml) and identify descriptors with type **Disease or Syndrome**
 - Link to MeSH Descriptors XML file: _ftp://nlmpubs.nlm.nih.gov/online/mesh/2015/desc2015.xml_
-```{r}
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
 #download XML file - 2015 MeSH descriptor
-Vocabulary <- XML::xmlParse("ftp://nlmpubs.nlm.nih.gov/online/mesh/2015/desc2015.xml")
+MeSHdescriptor <- XML::xmlParse("ftp://nlmpubs.nlm.nih.gov/online/mesh/2015/desc2015.xml")
+
+
+meshList <- xmlToList(MeSHdescriptor)
 
 #extract SemanticTypeName
 #extract_typeONLY <- MeSHdes["//SemanticTypeList/SemanticType/SemanticTypeName"]
 
 #extract SemanticTypeUI and SemanticTypeName
 #SemanticTypeUI will map to the 'ST' (semantic Type ID) from the MeSH vocabulary, and SemanticTypeName is the semantic type.
-extract_typeID <- Vocabulary["//SemanticTypeList/SemanticType"]
+extract_typeID <- MeSHdescriptor["//SemanticTypeList/SemanticType"]
 
-hm <- Vocabulary["//QualifierReferredTo"]
+hm <- MeSHdescriptor["//DescriptorName"]
 
 
+hm
 #do not run below
 #xml_Semantic <- XML::xmlToList(extract_typeID)
 
@@ -182,7 +198,8 @@ papers <- sapply(year, search_year, term="obesity", USE.NAMES=FALSE)
 plot(year, papers, type='b', main="The Rise of the Obesity")
 ```
 
-## Methods
+
+
 
 #Analysis
 
@@ -202,6 +219,15 @@ plot(year, papers, type='b', main="The Rise of the Obesity")
 
 # Appendix
 ## Codes
+
+### Nutshell
+```{r}
+
+```
+
+
+
+
 ### Functions
 
 - Function #1 _**PubmedXML_Dict**_
@@ -279,8 +305,40 @@ batchFetch <- function(entrez_search){
 }
 ```
 
-- Nutshell
+- Function #3 _**unlistDT**_
 ```{r}
+unlistDT <- function(dataframe){
+  #input should be the name of the dataframe
+  #this function only takes data with str as below
+  #'data.frame':	# obs. of  5 variables:
+  #$ pmid        : chr  
+  #$ authors     : chr  
+  #$ year        : chr  
+  #$ articletitle: chr  
+  #$ meshHeadings: chr  
+  
+  #load data.table
+  library(data.table)
+  
+  #set the key (unique identifier)
+  d.dt <- data.table(dataframe, key="pmid")
+  
+  #repeat the key and unlist the column's value
+  
+  newdt <- d.dt[, c(list(authors = unlist(strsplit(authors, ","))), list(mesh = unlist(strsplit(meshHeadings, ",")))), by=pmid]
+
+  #create temporary dataframe for merging purposes 
+  mergeTemp <- dataframe[,c("pmid", "articletitle","year")]
+  
+  
+  finalDT <- merge(newdt,mergeTemp, by="pmid", all.x = TRUE, all.y = TRUE)
+  
+  finalDT <- as.data.frame(finalDT)
+  
+  return(finalDT)
+  
+}
 
 ```
+
 
