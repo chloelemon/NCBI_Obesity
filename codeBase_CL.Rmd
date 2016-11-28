@@ -39,7 +39,8 @@ if (!'pacman' %in% installed.packages()){
   install.packages('pacman')
 }
 
-pacman::p_load("ggplot2","dplyr", "rentrez","knitr")
+pacman::p_load("ggplot2","dplyr", "rentrez","knitr","RCurl","plyr")
+
 #rentrez is the package in R provides an interface to the NCBI's EUtils API
 ```
 
@@ -114,20 +115,18 @@ entrez_summary(db="pubmed",id=obesity_search$ids[1])
 ## Data Retrival
 
 Based on the search query, all records that matched with the criteria were found and all IDs were returned. Those IDs or the web history could be used to fetch all records from NCBI.
+However, NCBI only allows users to pull 10,000 records at once. Therefore, a web history needs to be used to save the search result in the server so that all 59,515 records can be pulled from multiple batches. 
 
 - Obtain PubMed/MEDLINE records (in MEDLINE or XML format) for the formulated search using NCBI E-Utilities
+
+
 ```{r, echo=TRUE, message=FALSE, warning=FALSE}
 #fetch all records from the formulated search
-#because the records are big, we need to use web history to pull data out
-#output should be in parsed xml format
-fetch_xml <- entrez_fetch(db = "pubmed", 
-                     #id = obesity_search$ids, 
-                     web_history = obesity_search$web_history, 
-                     rettype = "xml", 
-                     #retmode = "xml",
-                     parsed = TRUE)
-#class(fetch_xml)
-summary(fetch_xml)
+source('./batchFetch_Fun.R')
+
+#this returns a data frame with extracted information from all records
+dt_sum <- batchFetch(obesity_search)
+
 
 ```
 
@@ -140,9 +139,6 @@ pubmed_list <- XML::xmlToList(fetch_xml)
 #------------------------------------------------------------------------------------------------
 ```
 
-```{r}
-dt_Obesity <- PubmedXML_Dict(fetch_xml)
-```
 
 
 
