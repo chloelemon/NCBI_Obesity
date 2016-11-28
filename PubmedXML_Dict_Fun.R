@@ -1,3 +1,5 @@
+#this function takes in a XML object resulted from entrez_fetch() and returns a data frame with variables of pmid, authors, year, articletitle, meshHeadings.
+
 PubmedXML_Dict <- function(XMLdata) {
   library(XML)
   #XMLdata <- xmlParse(theFile) #if file is a .XML
