@@ -117,27 +117,23 @@ entrez_summary(db="pubmed",id=obesity_search$ids[1])
 Based on the search query, all records that matched with the criteria were found and all IDs were returned. Those IDs or the web history could be used to fetch all records from NCBI.
 However, NCBI only allows users to pull 10,000 records at once. Therefore, a web history needs to be used to save the search result in the server so that all 59,515 records can be pulled from multiple batches. 
 
-- Obtain PubMed/MEDLINE records (in MEDLINE or XML format) for the formulated search using NCBI E-Utilities
-
-
+- Obtained PubMed/MEDLINE records (in MEDLINE or XML format) for the formulated search using NCBI E-Utilities 
+- Extracted "pmid","authors","year","articletitle","meshHeadings" from all records and stored values into a data frame.
 ```{r, echo=TRUE, message=FALSE, warning=FALSE}
 #fetch all records from the formulated search
 source('./batchFetch_Fun.R')
 
 #this returns a data frame with extracted information from all records
 dt_sum <- batchFetch(obesity_search)
-
-
+#function code will be shown at the end of this report
+```
+- Sample of the data frame
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+kable(dt_sum[1:3,])
 ```
 
-- Each record contains two keys: MedlineCitation and PubmedData.  MedlineCitation contains another set of keys including: PMID, MeshHeadingList, Article and so on. In order to extract information from the records, the XML file should be transformed into a list.
 
-The package XML which comes with the installation of rentrez has a function of xmlToList() to obtain information from these XML files. 
-```{r}
-#transform xml to list
-pubmed_list <- XML::xmlToList(fetch_xml)
-#------------------------------------------------------------------------------------------------
-```
+To prepare the data for further analysis, two variables *authors* and *meshHeadings* should be re formatted since there are multiple values in one record for both variables. 
 
 
 
@@ -198,3 +194,93 @@ plot(year, papers, type='b', main="The Rise of the Obesity")
 
 
 # Conclusions
+
+
+
+
+
+
+# Appendix
+## Codes
+### Functions
+
+- Function #1 _**PubmedXML_Dict**_
+```{r}
+#this function takes in a XML object resulted from entrez_fetch() and returns a data frame with variables of pmid, authors, year, articletitle, meshHeadings.
+
+PubmedXML_Dict <- function(XMLdata) {
+  library(XML)
+  #XMLdata <- xmlParse(theFile) #if file is a .XML
+  records <- getNodeSet(XMLdata, "//PubmedArticle")
+  pmid <- xpathSApply(XMLdata,"//MedlineCitation/PMID", xmlValue)
+  
+  authLast <- lapply(records, xpathSApply, ".//Author/LastName", xmlValue)
+  authLast[sapply(authLast, is.list)] <- NA
+  authInit <- lapply(records, xpathSApply, ".//Author/Initials", xmlValue)
+  authInit[sapply(authInit, is.list)] <- NA
+  authors <- mapply(paste, authLast, authInit, collapse = ",")
+  
+  year <- lapply(records, xpathSApply, ".//PubDate/Year", xmlValue) 
+  year[sapply(year, is.list)] <- NA
+  year <- unlist(year)
+
+  articletitle <- xpathSApply(XMLdata,"//ArticleTitle", xmlValue)
+
+  
+  meshHeadings <- lapply(records, xpathSApply, ".//DescriptorName", xmlValue)
+  meshHeadings[sapply(meshHeadings, is.list)] <- NA
+  meshHeadings <- sapply(meshHeadings, paste, collapse = ",")
+  
+  
+  DF <- data.frame(pmid, authors, year, articletitle, meshHeadings, stringsAsFactors = FALSE)
+  return(DF)
+}
+
+#reference https://github.com/christopherBelter/pubmedXML/blob/master/pubmedXML.R
+
+
+```
+
+- Function #2 _**batchFetch**_
+```{r}
+#this function takes in an object from result of entrez_search() which contains a web_history
+#this function only uses on large records request from NCBI, since NCBI only allows 10,000 records per efetch
+#the final output of this function is a data frame which contains extracted information from large XML records
+#if you need to change the variables in the data frame please edit the function of PubmedXML_Dict()
+batchFetch <- function(entrez_search){
+  
+  # Initiate restart at 0
+  RetStart <- 0
+  # Keep retmax at 10000
+  RetMax <- 10000
+  # Calculate how many itterations will be needed
+  Runs <- (entrez_search$count %/% 10000) + 1
+  # Create empty object to store data frame
+  dt_extract <- NULL
+  
+  
+  for (i in 1:Runs){
+    fetch_xml_temp <- entrez_fetch(db = "pubmed", 
+                                   web_history = entrez_search$web_history, 
+                                   rettype = "xml", 
+                                   retstart = RetStart,
+                                   retmax = RetMax,
+                                   parsed = TRUE)
+    
+    dt_Obesity_temp <- PubmedXML_Dict(fetch_xml_temp)
+    
+    dt_extract <- rbind(dt_extract,dt_Obesity_temp)  
+    
+    RetStart <- 0 + 10000*i
+    
+  }
+  return(dt_extract)
+  
+}
+```
+
+- Nutshell
+```{r}
+
+```
+
