@@ -28,7 +28,10 @@ output:
 rm(list = ls())
 
 #set working directory
-setwd('~/Documents/Dev_dataScienceProjects')
+setwd('~/Documents/Dev_dataScienceProjects/BrownUniv/')
+
+#load function
+source('./PubmedXML_Dict_Fun.R')
 
 
 #install/reuqire libraries
@@ -123,9 +126,12 @@ fetch_xml <- entrez_fetch(db = "pubmed",
                      rettype = "xml", 
                      #retmode = "xml",
                      parsed = TRUE)
-class(fetch_xml)
+#class(fetch_xml)
+summary(fetch_xml)
+
 ```
 
+- Each record contains two keys: MedlineCitation and PubmedData.  MedlineCitation contains another set of keys including: PMID, MeshHeadingList, Article and so on. In order to extract information from the records, the XML file should be transformed into a list.
 
 The package XML which comes with the installation of rentrez has a function of xmlToList() to obtain information from these XML files. 
 ```{r}
@@ -133,6 +139,11 @@ The package XML which comes with the installation of rentrez has a function of x
 pubmed_list <- XML::xmlToList(fetch_xml)
 #------------------------------------------------------------------------------------------------
 ```
+
+```{r}
+dt_Obesity <- PubmedXML_Dict(fetch_xml)
+```
+
 
 
 
