@@ -16,7 +16,7 @@ unlistDT <- function(dataframe){
   
   #repeat the key and unlist the column's value
   
-  newdt <- d.dt[, c(list(authors = unlist(strsplit(authors, ","))), list(mesh = unlist(strsplit(meshHeadings, ",")))), by=pmid]
+  newdt <- d.dt[, c(list(authors = unlist(strsplit(authors, "[|]"))), list(meshHeadings = unlist(strsplit(meshHeadings, "[|]")))), by=pmid]
 
   #create temporary dataframe for merging purposes 
   mergeTemp <- dataframe[,c("pmid", "articletitle","year")]
