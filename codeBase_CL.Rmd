@@ -30,9 +30,6 @@ rm(list = ls())
 #set working directory
 setwd('~/Documents/Dev_dataScienceProjects/BrownUniv/')
 
-#load function
-source('./PubmedXML_Dict_Fun.R')
-
 
 #install/reuqire libraries
 if (!'pacman' %in% installed.packages()){
