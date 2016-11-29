@@ -3,6 +3,7 @@
 #the final output of this function is a data frame which contains extracted information from large XML records
 #if you need to change the variables in the data frame please edit the function of PubmedXML_Dict()
 batchFetch <- function(entrez_search){
+  source('./PubmedXML_Dict_Fun.R')
   
   # Initiate restart at 0
   RetStart <- 0
@@ -21,6 +22,7 @@ batchFetch <- function(entrez_search){
                                    retstart = RetStart,
                                    retmax = RetMax,
                                    parsed = TRUE)
+    
     
     dt_Obesity_temp <- PubmedXML_Dict(fetch_xml_temp)
     
