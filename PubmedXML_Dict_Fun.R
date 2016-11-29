@@ -10,7 +10,7 @@ PubmedXML_Dict <- function(XMLdata) {
   authLast[sapply(authLast, is.list)] <- NA
   authInit <- lapply(records, xpathSApply, ".//Author/Initials", xmlValue)
   authInit[sapply(authInit, is.list)] <- NA
-  authors <- mapply(paste, authLast, authInit, collapse = ",")
+  authors <- mapply(paste, authLast, authInit, collapse = "|")
   
   year <- lapply(records, xpathSApply, ".//PubDate/Year", xmlValue) 
   year[sapply(year, is.list)] <- NA
@@ -21,7 +21,7 @@ PubmedXML_Dict <- function(XMLdata) {
   
   meshHeadings <- lapply(records, xpathSApply, ".//DescriptorName", xmlValue)
   meshHeadings[sapply(meshHeadings, is.list)] <- NA
-  meshHeadings <- sapply(meshHeadings, paste, collapse = ",")
+  meshHeadings <- sapply(meshHeadings, paste, collapse = "|")
   
   
   DF <- data.frame(pmid, authors, year, articletitle, meshHeadings, stringsAsFactors = FALSE)
