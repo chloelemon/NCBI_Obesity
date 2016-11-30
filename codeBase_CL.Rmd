@@ -85,7 +85,7 @@ searchField$MAJR
     + **pubmed** is the database
 
 
-Below shows the search result, which contains `r obesity_search$retmax` records and a web_history object; Here is the summary of search result:
+Below shows the search result, which contains 59515 records and a web_history object; Here is the summary of search result:
 ```{r, echo=TRUE, message=FALSE, warning=FALSE}
 query <- "obesity[MAJR] AND 2000/01/01:2012/12/31[PDAT]"
 
