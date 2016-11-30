@@ -244,7 +244,9 @@ kable(dt_filter[1:5,])
 
 ## Analysis
 
-Goal: Use a statistical or modeling approach to identify and to rank comorbidities for obesity based on publications that share MeSH descriptors for multiple diseases/syndromes.
+Goal: Use a statistical or modeling approach to identify and to rank comorbidities for obesity based on publications that share MeSH descriptors for multiple disease or syndrome.
+
+Sample records of unique **pmid** count on **meshHeadings**:
 
 ```{r, echo=TRUE, message=FALSE, warning=FALSE}
 #group by meshHeadings and count number records for each MeSH
@@ -252,13 +254,40 @@ meSH_count <- setDT(dt_filter)[, .(count = uniqueN(pmid)), by = meshHeadings]
 meSH_count <- as.data.frame(meSH_count)
 #rarrange
 meSH_count <- dplyr::arrange(meSH_count, -count) 
+meSH_count <- dplyr::select(meSH_count, meshHeadings,Count = count)
 
 kable(meSH_count[1:10,])
 ```
 
+Histogram of top 40 disease or syndrome:
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+Top25 <- meSH_count[1:20,]
+
+dt_filter$meshHeadings <- as.factor(dt_filter$meshHeadings)
+meSH_popularity <- ggplot(Top25,aes(x=reorder(meshHeadings,Count,function(x)-length(x)),y=Count))
+                        meSH_popularity + 
+                              geom_bar(fill = "orange") + 
+                              #theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+                              ggtitle("Histogram of Brand/Model") +
+                              xlab("Brand") +
+                              ylab("Number of Orders") +
+                          coord_flip()#+
+                              #theme(axis.text = bold)
+                        
+                        
+                        
+ggplot(Top25) +
+    geom_bar(aes(x=reorder(meshHeadings, Count),y=Count),stat="identity",fill = "orange") +                               #theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+                              ggtitle("Top Comorbidities for Obesity") +
+                              xlab("Disease or Syndrome") +
+                              ylab("Number of pmid") +
+                              coord_flip()#+
 
 
 
+
+```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 search_year <- function(year, term){
@@ -266,20 +295,22 @@ search_year <- function(year, term){
     entrez_search(db="pubmed", term=query, retmax=0)$count
 }
 
-year <- 2000:2012
-papers <- sapply(year, search_year, term="obesity", USE.NAMES=FALSE)
+Year <- 2000:2012
+papers <- sapply(Year, search_year, term="Obesity[MeSH Major Topic]", USE.NAMES=FALSE)
+
+dtPlot <- data.frame(Year, papers)
+
 
 plot(year, papers, type='b', main="The Rise of the Obesity")
+
+ggplot(data = dtPlot, aes(x=year, y=papers)) +
+    geom_line(colour="blue", size=1) +
+    geom_point(colour="black")
+
+
 ```
 
 
-
-
-## Exploratory Analysis
-## Advanced Analysis 
-
-
-# Results
 
 
 # Conclusions
