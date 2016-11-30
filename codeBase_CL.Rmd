@@ -3,6 +3,8 @@ title: "Obesity Comorbidity Analysis"
 author: "Chloe Li"
 date: "11/22/2016"
 output:
+  pdf_document:
+    toc: yes
   html_notebook:
     highlight: kate
     theme: united
@@ -11,8 +13,6 @@ output:
       collapsed: no
       smooth_scroll: no
   html_document:
-    toc: yes
-  pdf_document:
     toc: yes
 ---
 
