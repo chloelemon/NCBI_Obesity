@@ -2,14 +2,18 @@
 title: "Obesity Comorbidity Analysis"
 author: "Chloe Li"
 date: "11/22/2016"
-output: 
+output:
   html_notebook:
-    toc: true
-    theme: united
     highlight: kate
+    theme: united
+    toc: yes
     toc_float:
-      collapsed: false
-      smooth_scroll: false
+      collapsed: no
+      smooth_scroll: no
+  html_document:
+    toc: yes
+  pdf_document:
+    toc: yes
 ---
 
 # Introduction
@@ -41,8 +45,17 @@ pacman::p_load("ggplot2","dplyr", "rentrez","knitr","RCurl","plyr","tidyr","data
 #rentrez is the package in R provides an interface to the NCBI's EUtils API
 ```
 
+#Methods
 
-# Data
+1. Data retrieval from PubMed.
+2. Data processing on PubMed data
+3. MeSH descriptors XML parsing and processing
+4. Mapping MeSH descriptors to PubMed data
+5. Data analysis
+
+
+
+# Data Retrieval
 
 In order to retreive data based on date range and keywords, a correct search query should be formulated. The package of R named "rentrez" allows R users to pull data from NCBI. 
 
@@ -71,8 +84,8 @@ searchField$MAJR
     + **2000/01/01:2012/12/31[PDAT]** is date of publication/[PDAT]
     + **pubmed** is the database
 
-Below shows the search result, which contains `r obesity_search$retmax` records and a web_history object; 
-Here is the summary of search result:
+
+Below shows the search result, which contains `r obesity_search$retmax` records and a web_history object; Here is the summary of search result:
 ```{r, echo=TRUE, message=FALSE, warning=FALSE}
 query <- "obesity[MAJR] AND 2000/01/01:2012/12/31[PDAT]"
 
@@ -106,7 +119,7 @@ In order to make sure this search result match with the number of records on NCB
 
 
 
-## Data Retrival
+## Fetch Data
 
 Based on the search query, all records that matched with the criteria were found and all IDs were returned. Those IDs or the web history could be used to fetch all records from NCBI.
 However, NCBI only allows users to pull 10,000 records at once. Therefore, a web history needs to be used to save the search result in the server so that all 59,515 records can be pulled from multiple batches. 
@@ -136,6 +149,7 @@ dt_sum <- batchFetch(obesity_search)
 kable(dt_sum[1:3,])
 ```
 
+## Data Processing
 
 To prepare the data for further analysis, two variables *authors* and *meshHeadings* should be re formatted since there are multiple values in one record for both variables. 
 *authors* and *meshHeadings* variables should be unlisted so that each row represents an unique record of meshHeadings and authors with pmid, publication year and article title.
@@ -157,12 +171,12 @@ kable(dt_tidy[1:5,])
 
 
 
-## Mapping
+# Mapping
 
 - Goal: create mapping of MeSH descriptors to semantic types using the MeSH Vocabulary file (desc2015.xml) and identify descriptors with type **Disease or Syndrome**
 - Link to MeSH Descriptors XML file: _ftp://nlmpubs.nlm.nih.gov/online/mesh/2015/desc2015.xml_
 
-### Dictionary
+## Dictionary
 
 Parse MeSH descriptors XML file:
 
@@ -205,7 +219,7 @@ Sample of the MeSH-SemanticType dictionary
 kable(tidy_Dict[1:10,])
 ```
 
-### Link PubMed search to dictionary
+## Mapping
 ```{r, echo=TRUE, message=FALSE, warning=FALSE}
 #save the dataframe in case
 dt_PubMed <- dt_tidy
@@ -225,7 +239,7 @@ kable(dt_Mapped[1:5,])
 ```
 
 
-### Cleaning
+## Data Processing
 
 - Remove meshHeadings == "Obesity"
 - Select only SemanticTypeName == 'Disease or Syndrome'
@@ -242,11 +256,40 @@ kable(dt_filter[1:5,])
 ```
 
 
-## Analysis
+# Analysis
 
 Goal: Use a statistical or modeling approach to identify and to rank comorbidities for obesity based on publications that share MeSH descriptors for multiple disease or syndrome.
 
-Sample records of unique **pmid** count on **meshHeadings**:
+## Trend
+- Let's take a look at the trend on publications about obesity from 2000-2012:
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+search_year <- function(year, term){
+    query <- paste(term, "AND (", year, "[PDAT])")
+    entrez_search(db="pubmed", term=query, retmax=0)$count
+}
+
+Year <- 2000:2012
+papers <- sapply(Year, search_year, term="Obesity[MeSH Major Topic]", USE.NAMES=FALSE)
+
+dtPlot <- data.frame(Year, papers)
+dtPlot$Year <- as.character(dtPlot$Year)
+
+ggplot(data = dtPlot, aes(x=Year, y=papers,group=1)) +
+    geom_line(colour="light blue", size=1.5) +
+    geom_point(colour="black") +
+    ggtitle("Trend for Publications on Obesity") +
+    xlab("Year") +
+    ylab("Number of Papers")
+
+```
+
+As the line chart above shown, the number of publications with **Obesity** as major MeSH topic was increasing over the period of 2000 to 2012. Over time, the trend held consistent increase rate but from 2003 to 2004, it seemed that there was a large increase on the number of pulications on obesity. 
+
+## Ranking
+
+- Here is a sample record of unique **pmid** count on **meshHeadings**:
 
 ```{r, echo=TRUE, message=FALSE, warning=FALSE}
 #group by meshHeadings and count number records for each MeSH
@@ -259,24 +302,15 @@ meSH_count <- dplyr::select(meSH_count, meshHeadings,Count = count)
 kable(meSH_count[1:10,])
 ```
 
-Histogram of top 40 disease or syndrome:
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-Top25 <- meSH_count[1:20,]
+- Histogram of top 25 disease or syndrome:
 
-dt_filter$meshHeadings <- as.factor(dt_filter$meshHeadings)
-meSH_popularity <- ggplot(Top25,aes(x=reorder(meshHeadings,Count,function(x)-length(x)),y=Count))
-                        meSH_popularity + 
-                              geom_bar(fill = "orange") + 
-                              #theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-                              ggtitle("Histogram of Brand/Model") +
-                              xlab("Brand") +
-                              ylab("Number of Orders") +
-                          coord_flip()#+
-                              #theme(axis.text = bold)
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+#subset the top 25 records
+Top25 <- meSH_count[1:29,]
+Top25 <- dplyr::filter(Top25, meshHeadings != "Life Style"& meshHeadings != "Health Behavior" & meshHeadings != "Feeding Behavior"&meshHeadings != "Quality of Life")
                         
-                        
-                        
+
 ggplot(Top25) +
     geom_bar(aes(x=reorder(meshHeadings, Count),y=Count),stat="identity",fill = "orange") +                               #theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
                               ggtitle("Top Comorbidities for Obesity") +
@@ -285,236 +319,9 @@ ggplot(Top25) +
                               coord_flip()#+
 
 
-
-
 ```
-
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-search_year <- function(year, term){
-    query <- paste(term, "AND (", year, "[PDAT])")
-    entrez_search(db="pubmed", term=query, retmax=0)$count
-}
-
-Year <- 2000:2012
-papers <- sapply(Year, search_year, term="Obesity[MeSH Major Topic]", USE.NAMES=FALSE)
-
-dtPlot <- data.frame(Year, papers)
-
-
-plot(year, papers, type='b', main="The Rise of the Obesity")
-
-ggplot(data = dtPlot, aes(x=year, y=papers)) +
-    geom_line(colour="blue", size=1) +
-    geom_point(colour="black")
-
-
-```
-
-
 
 
 # Conclusions
-
-
-
-
-
-
-# Appendix
-## Codes
-
-### Nutshell
-```{r, echo=TRUE, message=FALSE, warning=FALSE}
-
-```
-
-
-
-
-### Functions
-
-#### PubmedXML_Dict()
-
-```{r, echo=TRUE, message=FALSE, warning=FALSE}
-#this function takes in a XML object resulted from entrez_fetch() and returns a data frame with variables of pmid, authors, year, articletitle, meshHeadings.
-
-PubmedXML_Dict <- function(XMLdata) {
-  library(XML)
-  #XMLdata <- xmlParse(theFile) #if file is a .XML
-  records <- getNodeSet(XMLdata, "//PubmedArticle")
-  pmid <- xpathSApply(XMLdata,"//MedlineCitation/PMID", xmlValue)
-  
-  authLast <- lapply(records, xpathSApply, ".//Author/LastName", xmlValue)
-  authLast[sapply(authLast, is.list)] <- NA
-  authInit <- lapply(records, xpathSApply, ".//Author/Initials", xmlValue)
-  authInit[sapply(authInit, is.list)] <- NA
-  authors <- mapply(paste, authLast, authInit, collapse = ",")
-  
-  year <- lapply(records, xpathSApply, ".//PubDate/Year", xmlValue) 
-  year[sapply(year, is.list)] <- NA
-  year <- unlist(year)
-
-  articletitle <- xpathSApply(XMLdata,"//ArticleTitle", xmlValue)
-
-  
-  meshHeadings <- lapply(records, xpathSApply, ".//DescriptorName", xmlValue)
-  meshHeadings[sapply(meshHeadings, is.list)] <- NA
-  meshHeadings <- sapply(meshHeadings, paste, collapse = ",")
-  
-  
-  DF <- data.frame(pmid, authors, year, articletitle, meshHeadings, stringsAsFactors = FALSE)
-  return(DF)
-}
-
-#reference https://github.com/christopherBelter/pubmedXML/blob/master/pubmedXML.R
-
-
-```
-
-#### batchFetch()
-
-```{r, echo=TRUE, message=FALSE, warning=FALSE}
-#this function takes in an object from result of entrez_search() which contains a web_history
-#this function only uses on large records request from NCBI, since NCBI only allows 10,000 records per efetch
-#the final output of this function is a data frame which contains extracted information from large XML records
-#if you need to change the variables in the data frame please edit the function of PubmedXML_Dict()
-batchFetch <- function(entrez_search){
-  
-  # Initiate restart at 0
-  RetStart <- 0
-  # Keep retmax at 10000
-  RetMax <- 10000
-  # Calculate how many itterations will be needed
-  Runs <- (entrez_search$count %/% 10000) + 1
-  # Create empty object to store data frame
-  dt_extract <- NULL
-  
-  
-  for (i in 1:Runs){
-    fetch_xml_temp <- entrez_fetch(db = "pubmed", 
-                                   web_history = entrez_search$web_history, 
-                                   rettype = "xml", 
-                                   retstart = RetStart,
-                                   retmax = RetMax,
-                                   parsed = TRUE)
-    
-    dt_Obesity_temp <- PubmedXML_Dict(fetch_xml_temp)
-    
-    dt_extract <- rbind(dt_extract,dt_Obesity_temp)  
-    
-    RetStart <- 0 + 10000*i
-    
-  }
-  return(dt_extract)
-  
-}
-```
-
-#### unlistDT()
-
-```{r, echo=TRUE, message=FALSE, warning=FALSE}
-unlistDT <- function(dataframe){
-  #input should be the name of the dataframe
-  #this function only takes data with str as below
-  #'data.frame':	# obs. of  5 variables:
-  #$ pmid        : chr  
-  #$ authors     : chr  
-  #$ year        : chr  
-  #$ articletitle: chr  
-  #$ meshHeadings: chr  
-  
-  #load data.table
-  library(data.table)
-  
-  #set the key (unique identifier)
-  d.dt <- data.table(dataframe, key="pmid")
-  
-  #repeat the key and unlist the column's value
-  
-  newdt <- d.dt[, c(list(authors = unlist(strsplit(authors, ","))), list(mesh = unlist(strsplit(meshHeadings, ",")))), by=pmid]
-
-  #create temporary dataframe for merging purposes 
-  mergeTemp <- dataframe[,c("pmid", "articletitle","year")]
-  
-  
-  finalDT <- merge(newdt,mergeTemp, by="pmid", all.x = TRUE, all.y = TRUE)
-  
-  finalDT <- as.data.frame(finalDT)
-  
-  return(finalDT)
-  
-}
-
-```
-
-#### ExtractDict()
-
-```{r, echo=TRUE, message=FALSE, warning=FALSE}
-#this function takes in XML file generated by xmlParse()
-#specifically on MeSH Vocabulary file (e.g. desc2015.xml)  years could be varied
-#this function extracts DescriptorUI,DescriptorName,SemanticTypeName and store them into a data frame
-
-ExtractDict <- function(XMLdata){
-  records <- getNodeSet(XMLdata, "//DescriptorRecord")
-  
-  DescriptorUI <- lapply(records, xpathSApply, ".//DescriptorUI", xmlValue)
-  DescriptorUI[sapply(DescriptorUI, is.list)] <- NA
-  DescriptorUI <- sapply(DescriptorUI, paste, collapse = ",")
-  
-  meshHeadings <- lapply(records, xpathSApply, ".//DescriptorName", xmlValue)
-  meshHeadings[sapply(meshHeadings, is.list)] <- NA
-  meshHeadings <- sapply(meshHeadings, paste, collapse = ",")
-  
-  SemanticTypeName <- lapply(records, xpathSApply, ".//SemanticTypeName", xmlValue)
-  SemanticTypeName[sapply(SemanticTypeName, is.list)] <- NA
-  SemanticTypeName <- sapply(SemanticTypeName, paste, collapse = ",")
-  
-  DF <- data.frame(DescriptorUI, meshHeadings, SemanticTypeName, stringsAsFactors = FALSE)
-  #create unique ID to unlist variables later
-  DF$ID<-seq.int(nrow(DF))
-  DF <- select(DF, ID, everything())
-  return(DF)
-}
-
-```
-
-#### MeshDict()
-
-```{r, echo=TRUE, message=FALSE, warning=FALSE}
-#this function runs after ExtractDict
-#takes in a dataframe structure as below:
-
-#'data.frame':	# obs. of  4 variables:
-#$ ID              : int
-#$ DescriptorUI    : chr  
-#$ meshHeadings    : chr  
-#$ SemanticTypeName: chr  
-
-#return a new unlisted data frame (aka. each cell contain single value)
-
-MeshDict <- function(dataframe){
-  
-  #set the key (unique identifier)
-  d.dt <- data.table(dataframe, key="ID")
-  
-  #repeat the key and unlist the column's value
-  
-  newdt <- d.dt[, c(list(DescriptorUI = unlist(strsplit(DescriptorUI, ","))),list(meshHeadings = unlist(strsplit(meshHeadings, ","))),list(SemanticTypeName = unlist(strsplit(SemanticTypeName, ",")))), by=ID]
-  
-  newdt <- as.data.frame(newdt)
-  
-  #remove ID field
-  newdt[,"ID"] <- NULL
-  
-  #remove duplicate
-  newdt <- unique(newdt)
-  
-  return(newdt)
-  
-}
-
-```
-
-
-
-
+   The most common complication of obesity is **Insulin Resistance** syndrome while the second most common complication is  **Diabetes Mellitus, Type 2**. Among top most comorbidities of obesity, most of diseases or syndromes fall under the category of metabolic syndrome. Moreover, according to the trend of number of publications on obesity, it was certain that many researches and discussions were on obesity.
+   
