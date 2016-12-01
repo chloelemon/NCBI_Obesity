@@ -18,7 +18,7 @@ output:
 
 # Introduction
 
-  This report documents data analytics process for obesity comorbidity analysis on data retrieved from NCBI. This is an assignment from Brown University's the CIS Data Science Practice for assessing Chloe Li's technical skills.
+  This report documents data analytics process for obesity comorbidity analysis on data retrieved from NCBI. 
   
   *NOTE: Select **Hide Code** to hide all R codes.*
 
